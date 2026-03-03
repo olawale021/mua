@@ -106,18 +106,13 @@ export async function searchProducts(
   keyword: string,
   limit = 6
 ): Promise<SephoraProduct[]> {
-  try {
-    const data = await fetchSephora("/search-by-keyword", {
-      keyword,
-      pageSize: String(limit),
-    });
+  const data = await fetchSephora("/search-by-keyword", {
+    keyword,
+    pageSize: String(limit),
+  });
 
-    const products = Array.isArray(data) ? data : [];
-    return products.map(mapProduct);
-  } catch (error) {
-    console.error("Sephora search error:", error);
-    return [];
-  }
+  const products = Array.isArray(data) ? data : [];
+  return products.map(mapProduct);
 }
 
 export async function getProductDetails(
@@ -174,16 +169,26 @@ export async function getRecommendationProducts(): Promise<
   ];
 
   // Step 1: Search for products in each category
-  const searchResults = await Promise.allSettled(
+  const searchResults = await Promise.all(
     categories.map((cat) => getProductsByCategory(cat, 5))
   );
 
   const productsByCategory = {} as Record<ProductCategory, SephoraProduct[]>;
   categories.forEach((cat, i) => {
-    const result = searchResults[i];
-    productsByCategory[cat] =
-      result.status === "fulfilled" ? result.value : [];
+    productsByCategory[cat] = searchResults[i];
   });
+
+  // Check if we got any products at all
+  const totalProducts = Object.values(productsByCategory).reduce(
+    (sum, products) => sum + products.length,
+    0
+  );
+
+  if (totalProducts === 0) {
+    throw new Error(
+      "Sephora product catalog is temporarily unavailable. Please try again in a few minutes."
+    );
+  }
 
   // Step 2: Fetch real shades for all products in parallel
   const enrichPromises = categories.map(async (cat) => {

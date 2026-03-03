@@ -20,7 +20,6 @@ export default function AnalyzePage() {
     setError(null);
 
     try {
-      // Step 1: Analyze the skin
       const analysisRes = await fetch(
         `/api/analyze?provider=${provider}`,
         {
@@ -36,7 +35,6 @@ export default function AnalyzePage() {
 
       const { photoUrl, ...analysis } = await analysisRes.json() as SkinAnalysis & { photoUrl: string };
 
-      // Step 2: Get product recommendations
       const recommendRes = await fetch(
         `/api/recommend?provider=${provider}`,
         {
@@ -52,7 +50,6 @@ export default function AnalyzePage() {
 
       const recommendations = await recommendRes.json();
 
-      // Store results — use server-converted JPEG for display
       sessionStorage.setItem("mua-analysis", JSON.stringify(analysis));
       sessionStorage.setItem(
         "mua-recommendations",
@@ -73,41 +70,58 @@ export default function AnalyzePage() {
 
   if (state === "analyzing") {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col items-center justify-center px-4">
-        <LoadingAnimation />
+      <div className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center px-6">
+        <div className="mesh-gradient pointer-events-none absolute inset-0" />
+        <div className="relative z-10">
+          <LoadingAnimation />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col items-center justify-center px-4 py-8">
-      <div className="mb-8 text-center">
-        <h1 className="mb-2 text-2xl font-bold tracking-tight">
-          Take Your Selfie
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          We&apos;ll analyze your skin tone, undertone, face shape, and more
-        </p>
-      </div>
+    <div className="relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-6 py-12">
+      <div className="mesh-gradient pointer-events-none absolute inset-0" />
 
-      <CameraCapture onCapture={handleCapture} />
-
-      {/* Model toggle */}
-      <div className="mt-6">
-        <ProviderToggle value={provider} onChange={setProvider} />
-      </div>
-
-      {state === "error" && error && (
-        <div className="mt-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-sm text-destructive">
-          {error}
-          <button
-            onClick={() => setState("capture")}
-            className="mt-2 block w-full text-center underline underline-offset-4"
-          >
-            Try again
-          </button>
+      <div className="relative z-10 w-full max-w-md">
+        {/* Header */}
+        <div className="animate-fade-up mb-10 text-center">
+          <div className="mb-3 flex items-center justify-center gap-3">
+            <div className="h-px w-6 bg-copper/50" />
+            <span className="label-caps text-copper">Step One</span>
+            <div className="h-px w-6 bg-copper/50" />
+          </div>
+          <h1 className="font-display text-3xl font-bold italic tracking-editorial sm:text-4xl">
+            Take Your Selfie
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            We&apos;ll analyze your skin tone, undertone, face shape & more
+          </p>
         </div>
-      )}
+
+        {/* Camera */}
+        <div className="animate-fade-up delay-100">
+          <CameraCapture onCapture={handleCapture} />
+        </div>
+
+        {/* Provider toggle */}
+        <div className="animate-fade-up delay-200 mt-8 flex justify-center">
+          <ProviderToggle value={provider} onChange={setProvider} />
+        </div>
+
+        {/* Error state */}
+        {state === "error" && error && (
+          <div className="animate-scale-in mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-5 text-center backdrop-blur-sm">
+            <p className="text-sm text-destructive">{error}</p>
+            <button
+              onClick={() => setState("capture")}
+              className="mt-3 label-caps text-destructive/80 underline underline-offset-4 transition-colors hover:text-destructive"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

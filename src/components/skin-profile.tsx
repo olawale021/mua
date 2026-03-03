@@ -1,8 +1,6 @@
 "use client";
 
 import { SkinAnalysis } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface SkinProfileProps {
   analysis: SkinAnalysis;
@@ -21,129 +19,120 @@ const FACE_SHAPE_LABELS: Record<string, string> = {
 
 export function SkinProfile({ analysis, photo }: SkinProfileProps) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Your Skin Profile</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Photo + Color Swatch Row */}
-        <div className="flex items-center gap-4">
-          {photo && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photo}
-              alt="Your photo"
-              className="h-20 w-20 rounded-full border-2 border-border object-cover"
+    <div className="overflow-hidden rounded-2xl border border-border/40 bg-card/70 shadow-editorial backdrop-blur-sm">
+      {/* Top section — photo + tone */}
+      <div className="flex items-center gap-5 p-6">
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo}
+            alt="Your photo"
+            className="h-24 w-24 rounded-xl border border-border/30 object-cover shadow-sm"
+          />
+        )}
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-3">
+            <div
+              className="h-12 w-12 rounded-lg border border-border/30 shadow-sm"
+              style={{ backgroundColor: analysis.skinTone.hexColor }}
             />
-          )}
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-3">
-              <div
-                className="h-10 w-10 rounded-full border-2 border-border shadow-sm"
-                style={{ backgroundColor: analysis.skinTone.hexColor }}
-              />
-              <div>
-                <p className="text-sm font-medium">
-                  {analysis.skinTone.description}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Monk Scale: {analysis.skinTone.monkScale}/10 &middot;{" "}
-                  {analysis.skinTone.hexColor}
-                </p>
+            <div>
+              <p className="font-display text-base font-semibold italic">
+                {analysis.skinTone.description}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Monk Scale {analysis.skinTone.monkScale}/10 &middot;{" "}
+                <span className="font-mono text-[10px]">{analysis.skinTone.hexColor}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="editorial-line mx-6" />
+
+      {/* Analysis grid */}
+      <div className="grid grid-cols-2 gap-px bg-border/30 sm:grid-cols-4">
+        {/* Undertone */}
+        <div className="bg-card/70 p-4">
+          <p className="label-caps mb-1.5 text-muted-foreground">Undertone</p>
+          <p className="font-display text-sm font-semibold capitalize italic">
+            {analysis.undertone.category}
+          </p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+            {Math.round(analysis.undertone.confidence * 100)}% confidence
+          </p>
+        </div>
+
+        {/* Face Shape */}
+        <div className="bg-card/70 p-4">
+          <p className="label-caps mb-1.5 text-muted-foreground">Face Shape</p>
+          <p className="font-display text-sm font-semibold italic">
+            {FACE_SHAPE_LABELS[analysis.faceShape.shape] ||
+              analysis.faceShape.shape}
+          </p>
+        </div>
+
+        {/* Skin Type */}
+        <div className="bg-card/70 p-4">
+          <p className="label-caps mb-1.5 text-muted-foreground">Skin Type</p>
+          <p className="font-display text-sm font-semibold capitalize italic">
+            {analysis.skinType.primary}
+          </p>
+        </div>
+
+        {/* Confidence */}
+        <div className="bg-card/70 p-4">
+          <p className="label-caps mb-1.5 text-muted-foreground">Confidence</p>
+          <p className="font-display text-sm font-semibold capitalize italic">
+            {analysis.overallConfidence}
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom — concerns & indicators */}
+      {(analysis.skinType.concerns.length > 0 ||
+        analysis.undertone.indicators.length > 0) && (
+        <div className="space-y-4 p-6">
+          {analysis.skinType.concerns.length > 0 && (
+            <div>
+              <p className="label-caps mb-2 text-muted-foreground">
+                Skin Concerns
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {analysis.skinType.concerns.map((concern) => (
+                  <span
+                    key={concern}
+                    className="rounded-full border border-border/50 bg-muted/50 px-3 py-1 text-xs text-muted-foreground"
+                  >
+                    {concern}
+                  </span>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Analysis Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Undertone */}
-          <div className="rounded-lg border border-border/50 p-3">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Undertone
-            </p>
-            <Badge variant="secondary" className="capitalize">
-              {analysis.undertone.category}
-            </Badge>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {Math.round(analysis.undertone.confidence * 100)}% confidence
-            </p>
-          </div>
-
-          {/* Face Shape */}
-          <div className="rounded-lg border border-border/50 p-3">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Face Shape
-            </p>
-            <Badge variant="secondary">
-              {FACE_SHAPE_LABELS[analysis.faceShape.shape] ||
-                analysis.faceShape.shape}
-            </Badge>
-          </div>
-
-          {/* Skin Type */}
-          <div className="rounded-lg border border-border/50 p-3">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Skin Type
-            </p>
-            <Badge variant="secondary" className="capitalize">
-              {analysis.skinType.primary}
-            </Badge>
-          </div>
-
-          {/* Analysis Quality */}
-          <div className="rounded-lg border border-border/50 p-3">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Confidence
-            </p>
-            <Badge
-              variant={
-                analysis.overallConfidence === "high"
-                  ? "default"
-                  : "secondary"
-              }
-              className="capitalize"
-            >
-              {analysis.overallConfidence}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Skin Concerns */}
-        {analysis.skinType.concerns.length > 0 && (
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Skin Concerns
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {analysis.skinType.concerns.map((concern) => (
-                <Badge key={concern} variant="outline" className="text-xs">
-                  {concern}
-                </Badge>
-              ))}
+          {analysis.undertone.indicators.length > 0 && (
+            <div>
+              <p className="label-caps mb-2 text-muted-foreground">
+                Undertone Indicators
+              </p>
+              <ul className="space-y-1">
+                {analysis.undertone.indicators.map((indicator) => (
+                  <li
+                    key={indicator}
+                    className="flex items-start gap-2 text-xs text-muted-foreground"
+                  >
+                    <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-copper/60" />
+                    {indicator}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        )}
-
-        {/* Undertone Indicators */}
-        {analysis.undertone.indicators.length > 0 && (
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Undertone Indicators
-            </p>
-            <ul className="space-y-1">
-              {analysis.undertone.indicators.map((indicator) => (
-                <li
-                  key={indicator}
-                  className="text-xs text-muted-foreground"
-                >
-                  &bull; {indicator}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

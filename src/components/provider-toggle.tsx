@@ -9,12 +9,12 @@ interface ProviderToggleProps {
 
 export function ProviderToggle({ value, onChange }: ProviderToggleProps) {
   return (
-    <div className="flex items-center gap-1 rounded-full border border-border bg-muted/50 p-1">
+    <div className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-card/70 p-1 backdrop-blur-sm">
       <button
         onClick={() => onChange("anthropic")}
-        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+        className={`rounded-full px-4 py-2 text-xs font-semibold transition-all ${
           value === "anthropic"
-            ? "bg-background text-foreground shadow-sm"
+            ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >
@@ -22,9 +22,9 @@ export function ProviderToggle({ value, onChange }: ProviderToggleProps) {
       </button>
       <button
         onClick={() => onChange("openai")}
-        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+        className={`rounded-full px-4 py-2 text-xs font-semibold transition-all ${
           value === "openai"
-            ? "bg-background text-foreground shadow-sm"
+            ? "bg-primary text-primary-foreground shadow-sm"
             : "text-muted-foreground hover:text-foreground"
         }`}
       >

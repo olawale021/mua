@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { SkinProfile } from "@/components/skin-profile";
 import { ProductGrid } from "@/components/product-grid";
 import { SkinAnalysis, RecommendationResult } from "@/types";
@@ -35,70 +34,85 @@ export default function ResultsPage() {
 
   if (!analysis || !recommendations) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
-        <div className="text-muted-foreground">Loading results...</div>
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+        <div className="label-caps text-muted-foreground">Loading results...</div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Your Results</h1>
-          <p className="text-sm text-muted-foreground">
-            Personalized analysis and recommendations
-            {provider && (
-              <span className="ml-1 text-xs">
-                via {provider === "openai" ? "GPT-4o" : "Claude"}
+    <div className="relative min-h-[calc(100vh-4rem)]">
+      <div className="mesh-gradient pointer-events-none absolute inset-0" />
+
+      <div className="relative z-10 mx-auto max-w-3xl px-6 py-10">
+        {/* Header */}
+        <div className="animate-fade-up mb-10 flex items-start justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-3">
+              <div className="h-px w-6 bg-copper/50" />
+              <span className="label-caps text-copper">
+                Your Results
+                {provider && (
+                  <span className="ml-2 text-muted-foreground/60">
+                    via {provider === "openai" ? "GPT-4o" : "Claude"}
+                  </span>
+                )}
               </span>
-            )}
-          </p>
+            </div>
+            <h1 className="font-display text-3xl font-bold italic tracking-editorial sm:text-4xl">
+              Beauty Profile
+            </h1>
+          </div>
+          <Link
+            href="/analyze"
+            className="rounded-full border border-border bg-card/80 px-5 py-2.5 text-sm font-medium backdrop-blur-sm transition-all hover:shadow-editorial hover:-translate-y-0.5"
+          >
+            Retake
+          </Link>
         </div>
-        <Link href="/analyze">
-          <Button variant="outline" size="sm">
+
+        {/* Skin Profile */}
+        <div className="animate-fade-up delay-100 mb-10">
+          <SkinProfile analysis={analysis} photo={photo || undefined} />
+        </div>
+
+        {/* Divider */}
+        <div className="animate-fade-up delay-200 mb-8 flex items-center gap-4">
+          <div className="editorial-line h-px flex-1" />
+          <span className="label-caps text-muted-foreground/60">Recommended Products</span>
+          <div className="editorial-line h-px flex-1" />
+        </div>
+
+        {/* Product Recommendations */}
+        <div className="animate-fade-up delay-300 mb-10">
+          <ProductGrid recommendations={recommendations.recommendations} />
+        </div>
+
+        {/* Footer actions */}
+        <div className="animate-fade-up delay-400 flex flex-col gap-3 border-t border-border/40 pt-8 sm:flex-row">
+          <Link
+            href="/analyze"
+            className="flex-1 rounded-full border border-border bg-card/80 py-3.5 text-center text-sm font-medium backdrop-blur-sm transition-all hover:shadow-editorial hover:-translate-y-0.5"
+          >
             Retake Photo
-          </Button>
-        </Link>
-      </div>
-
-      {/* Skin Profile */}
-      <div className="mb-8">
-        <SkinProfile analysis={analysis} photo={photo || undefined} />
-      </div>
-
-      {/* Product Recommendations */}
-      <div className="mb-8">
-        <h2 className="mb-4 text-lg font-semibold">
-          Recommended Products
-        </h2>
-        <ProductGrid recommendations={recommendations.recommendations} />
-      </div>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row">
-        <Link href="/analyze" className="flex-1">
-          <Button variant="outline" className="w-full">
-            Retake Photo
-          </Button>
-        </Link>
-        <Button
-          className="flex-1"
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: "My MUA Beauty Analysis",
-                text: `My skin analysis: ${analysis.skinTone.description}, ${analysis.undertone.category} undertone, ${analysis.faceShape.shape} face shape`,
-                url: window.location.href,
-              });
-            } else {
-              navigator.clipboard.writeText(window.location.href);
-            }
-          }}
-        >
-          Share Results
-        </Button>
+          </Link>
+          <button
+            className="flex-1 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground shadow-editorial transition-all hover:shadow-editorial-hover hover:-translate-y-0.5"
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: "My MUA Beauty Analysis",
+                  text: `My skin analysis: ${analysis.skinTone.description}, ${analysis.undertone.category} undertone, ${analysis.faceShape.shape} face shape`,
+                  url: window.location.href,
+                });
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+              }
+            }}
+          >
+            Share Results
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -19,16 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch products from Sephora API
-    let productsJson: string;
-    try {
-      const products = await getRecommendationProducts();
-      productsJson = JSON.stringify(products, null, 2);
-    } catch {
-      // If Sephora API fails, use AI-only recommendations
-      productsJson = JSON.stringify({
-        note: "Sephora API unavailable. Please provide general product recommendations based on popular brands available at Sephora, including specific shade names.",
-      });
-    }
+    const products = await getRecommendationProducts();
+    const productsJson = JSON.stringify(products, null, 2);
 
     const analysisJson = JSON.stringify(analysis, null, 2);
     const prompt = getRecommendationPrompt(analysisJson, productsJson);

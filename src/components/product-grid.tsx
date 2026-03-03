@@ -1,7 +1,7 @@
 "use client";
 
+import { useState } from "react";
 import { CategoryRecommendation, ProductCategory } from "@/types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard } from "@/components/product-card";
 
 interface ProductGridProps {
@@ -29,7 +29,6 @@ const CATEGORY_ORDER: ProductCategory[] = [
 ];
 
 export function ProductGrid({ recommendations }: ProductGridProps) {
-  // Sort recommendations by the defined category order
   const sorted = [...recommendations].sort((a, b) => {
     return (
       CATEGORY_ORDER.indexOf(a.category) -
@@ -37,54 +36,64 @@ export function ProductGrid({ recommendations }: ProductGridProps) {
     );
   });
 
+  const [activeCategory, setActiveCategory] = useState(
+    sorted[0]?.category || "foundation"
+  );
+
   if (sorted.length === 0) {
     return (
-      <div className="py-8 text-center text-muted-foreground">
-        No product recommendations available.
+      <div className="py-12 text-center">
+        <p className="label-caps text-muted-foreground">
+          No product recommendations available
+        </p>
       </div>
     );
   }
 
-  const defaultTab = sorted[0]?.category;
+  const activeRec = sorted.find((r) => r.category === activeCategory);
 
   return (
-    <Tabs defaultValue={defaultTab} className="w-full">
-      <TabsList className="mb-4 flex w-full flex-wrap justify-start gap-1 bg-transparent">
+    <div className="space-y-6">
+      {/* Category tabs — custom pill design */}
+      <div className="flex flex-wrap gap-2">
         {sorted.map((rec) => (
-          <TabsTrigger
+          <button
             key={rec.category}
-            value={rec.category}
-            className="rounded-full border border-border/50 px-3 py-1.5 text-xs data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            onClick={() => setActiveCategory(rec.category)}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition-all ${
+              activeCategory === rec.category
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "border border-border/40 bg-card/60 text-muted-foreground hover:text-foreground hover:border-border"
+            }`}
           >
             {CATEGORY_LABELS[rec.category] || rec.category}
-          </TabsTrigger>
+          </button>
         ))}
-      </TabsList>
+      </div>
 
-      {sorted.map((rec) => (
-        <TabsContent key={rec.category} value={rec.category} className="space-y-4">
+      {/* Active category content */}
+      {activeRec && (
+        <div className="space-y-4">
           {/* Application Tips */}
-          {rec.applicationTips && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <p className="text-xs font-medium text-primary">
-                Application Tip
-              </p>
-              <p className="mt-1 text-sm text-foreground">
-                {rec.applicationTips}
+          {activeRec.applicationTips && (
+            <div className="rounded-xl border border-copper/20 bg-copper/5 p-4 backdrop-blur-sm">
+              <p className="label-caps mb-1 text-copper">Application Tip</p>
+              <p className="text-sm leading-relaxed text-foreground/80">
+                {activeRec.applicationTips}
               </p>
             </div>
           )}
 
-          {/* Product Cards — sorted by rank */}
+          {/* Product Cards */}
           <div className="space-y-3">
-            {[...rec.products]
+            {[...activeRec.products]
               .sort((a, b) => (a.rank || 99) - (b.rank || 99))
               .map((product, i) => (
-              <ProductCard key={`${product.productId}-${i}`} product={product} />
-            ))}
+                <ProductCard key={`${product.productId}-${i}`} product={product} />
+              ))}
           </div>
-        </TabsContent>
-      ))}
-    </Tabs>
+        </div>
+      )}
+    </div>
   );
 }
