@@ -56,23 +56,33 @@ export async function POST(request: NextRequest) {
 
     const model = openai.chat("gpt-4o");
 
-    const { object: analysis } = await generateObject({
-      model,
-      schema: skinAnalysisSchema,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: SKIN_ANALYSIS_PROMPT },
+    let analysis;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const result = await generateObject({
+          model,
+          schema: skinAnalysisSchema,
+          messages: [
             {
-              type: "image",
-              image: jpegBuffer,
-              mediaType: "image/jpeg",
+              role: "user",
+              content: [
+                { type: "text", text: SKIN_ANALYSIS_PROMPT },
+                {
+                  type: "image",
+                  image: jpegBuffer,
+                  mediaType: "image/jpeg",
+                },
+              ],
             },
           ],
-        },
-      ],
-    });
+        });
+        analysis = result.object;
+        break;
+      } catch (e) {
+        if (attempt === 3) throw e;
+        console.warn(`[Analyze] Attempt ${attempt} failed, retrying...`);
+      }
+    }
 
     // Return analysis + converted JPEG so the client can display it
     const jpegDataUrl = `data:image/jpeg;base64,${jpegBuffer.toString("base64")}`;
