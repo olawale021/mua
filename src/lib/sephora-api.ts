@@ -1,26 +1,10 @@
 import { SephoraProduct, ProductCategory, ShadeInfo } from "@/types";
+import { getCached, setCache } from "@/lib/cache";
 
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || "";
 const RAPIDAPI_HOST =
   process.env.RAPIDAPI_HOST || "real-time-sephora-api.p.rapidapi.com";
 const BASE_URL = `https://${RAPIDAPI_HOST}`;
-
-// Simple in-memory cache
-const cache = new Map<string, { data: unknown; expiry: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
-  if (entry && entry.expiry > Date.now()) {
-    return entry.data as T;
-  }
-  cache.delete(key);
-  return null;
-}
-
-function setCache(key: string, data: unknown) {
-  cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
-}
 
 async function fetchSephora(
   endpoint: string,
@@ -32,35 +16,58 @@ async function fetchSephora(
   );
 
   const cacheKey = url.toString();
-  const cached = getCached(cacheKey);
+  const cached = await getCached(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      "x-rapidapi-key": RAPIDAPI_KEY,
-      "x-rapidapi-host": RAPIDAPI_HOST,
-    },
-  });
+  // Throttle: slower for product-details (rate-limited harder), faster for searches
+  const delay = endpoint === "/product-details" ? 1200 : 500;
+  await new Promise((r) => setTimeout(r, delay));
 
-  if (!response.ok) {
+  // Retry up to 3 times for flaky 500s
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await fetch(url.toString(), {
+      headers: {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": RAPIDAPI_HOST,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setCache(cacheKey, data);
+      return data;
+    }
+
+    if (response.status === 429) {
+      // Rate limit — wait and retry
+      console.log(`[Sephora] 429 on ${endpoint} ${params.keyword || params.productId || ""}, waiting 1s (attempt ${attempt})`);
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+
+    if (response.status === 500 && attempt < 3) {
+      // Server error — retry after brief pause
+      console.log(`[Sephora] 500 on ${endpoint} ${params.keyword || params.productId || ""}, retrying (attempt ${attempt})`);
+      await new Promise((r) => setTimeout(r, 500));
+      continue;
+    }
+
     throw new Error(
-      `Sephora API error: ${response.status} ${response.statusText}`
+      `Sephora API is temporarily unavailable (${response.status}). Please try again later.`
     );
   }
 
-  const data = await response.json();
-  setCache(cacheKey, data);
-  return data;
+  throw new Error("Sephora API failed after 3 retries.");
 }
 
-const CATEGORY_KEYWORDS: Record<ProductCategory, string> = {
-  foundation: "foundation",
-  concealer: "concealer",
-  blush: "blush",
-  lipstick: "lipstick",
-  eyeshadow: "eyeshadow palette",
-  bronzer: "bronzer",
-  highlighter: "highlighter makeup",
+const CATEGORY_CONFIG: Record<ProductCategory, { keyword: string; categoryId: string }> = {
+  foundation: { keyword: "foundation", categoryId: "cat130058" },   // Face
+  concealer:  { keyword: "concealer", categoryId: "cat130058" },    // Face
+  blush:      { keyword: "blush", categoryId: "cat1650031" },       // Cheek
+  lipstick:   { keyword: "lipstick", categoryId: "cat180010" },     // Lip
+  eyeshadow:  { keyword: "eyeshadow", categoryId: "cat130054" },    // Eye
+  bronzer:    { keyword: "bronzer", categoryId: "cat1650031" },      // Cheek
+  highlighter:{ keyword: "luminizer", categoryId: "cat1650031" },    // Cheek
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,11 +111,14 @@ async function fetchShades(productId: string): Promise<ShadeInfo[]> {
 
 export async function searchProducts(
   keyword: string,
+  categoryId: string,
   limit = 6
 ): Promise<SephoraProduct[]> {
   const data = await fetchSephora("/search-by-keyword", {
     keyword,
     pageSize: String(limit),
+    sortBy: "BEST_SELLING",
+    categoryId,
   });
 
   const products = Array.isArray(data) ? data : [];
@@ -135,24 +145,20 @@ export async function getProductsByCategory(
   category: ProductCategory,
   limit = 6
 ): Promise<SephoraProduct[]> {
-  const keyword = CATEGORY_KEYWORDS[category];
-  return searchProducts(keyword, limit);
+  const { keyword, categoryId } = CATEGORY_CONFIG[category];
+  return searchProducts(keyword, categoryId, limit);
 }
 
-/** Enrich products with real shade names from product details */
+/** Enrich products with real shade names from product details (sequential to avoid rate limits) */
 async function enrichWithShades(
   products: SephoraProduct[]
 ): Promise<SephoraProduct[]> {
-  const results = await Promise.allSettled(
-    products.map(async (p) => {
-      const shades = await fetchShades(p.productId);
-      return { ...p, shades };
-    })
-  );
-
-  return results.map((r, i) =>
-    r.status === "fulfilled" ? r.value : products[i]
-  );
+  const enriched: SephoraProduct[] = [];
+  for (const p of products) {
+    const shades = await fetchShades(p.productId);
+    enriched.push({ ...p, shades });
+  }
+  return enriched;
 }
 
 export async function getRecommendationProducts(): Promise<
@@ -168,15 +174,17 @@ export async function getRecommendationProducts(): Promise<
     "highlighter",
   ];
 
-  // Step 1: Search for products in each category
-  const searchResults = await Promise.all(
-    categories.map((cat) => getProductsByCategory(cat, 5))
-  );
-
   const productsByCategory = {} as Record<ProductCategory, SephoraProduct[]>;
-  categories.forEach((cat, i) => {
-    productsByCategory[cat] = searchResults[i];
-  });
+
+  // Step 1: Search each category sequentially to respect per-second rate limit
+  for (const cat of categories) {
+    try {
+      productsByCategory[cat] = await getProductsByCategory(cat, 3);
+    } catch (err) {
+      console.warn(`[Sephora] Skipping ${cat}:`, err);
+      productsByCategory[cat] = [];
+    }
+  }
 
   // Check if we got any products at all
   const totalProducts = Object.values(productsByCategory).reduce(
@@ -190,13 +198,20 @@ export async function getRecommendationProducts(): Promise<
     );
   }
 
-  // Step 2: Fetch real shades for all products in parallel
-  const enrichPromises = categories.map(async (cat) => {
-    const enriched = await enrichWithShades(productsByCategory[cat]);
-    productsByCategory[cat] = enriched;
-  });
+  // Step 2: Fetch real shades only for shade-critical categories
+  const shadeCategories: ProductCategory[] = [
+    "foundation",
+    "concealer",
+    "blush",
+    "lipstick",
+    "bronzer",
+  ];
 
-  await Promise.allSettled(enrichPromises);
+  for (const cat of shadeCategories) {
+    if (productsByCategory[cat]?.length > 0) {
+      productsByCategory[cat] = await enrichWithShades(productsByCategory[cat]);
+    }
+  }
 
   return productsByCategory;
 }

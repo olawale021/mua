@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import sharp from "sharp";
 import { skinAnalysisSchema } from "@/lib/analysis-schema";
@@ -55,14 +54,7 @@ export async function POST(request: NextRequest) {
       .jpeg({ quality: 90 })
       .toBuffer();
 
-    // Choose provider
-    const provider =
-      request.nextUrl.searchParams.get("provider") || "openai";
-
-    const model =
-      provider === "anthropic"
-        ? anthropic("claude-sonnet-4-20250514")
-        : openai.chat("gpt-4o");
+    const model = openai.chat("gpt-4o");
 
     const { object: analysis } = await generateObject({
       model,

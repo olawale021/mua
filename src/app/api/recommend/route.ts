@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { recommendationResultSchema } from "@/lib/analysis-schema";
 import { getRecommendationPrompt } from "@/lib/prompts";
@@ -25,14 +24,7 @@ export async function POST(request: NextRequest) {
     const analysisJson = JSON.stringify(analysis, null, 2);
     const prompt = getRecommendationPrompt(analysisJson, productsJson);
 
-    // Choose provider
-    const provider =
-      request.nextUrl.searchParams.get("provider") || "openai";
-
-    const model =
-      provider === "openai"
-        ? openai.chat("gpt-4o")
-        : anthropic("claude-sonnet-4-20250514");
+    const model = openai.chat("gpt-4o");
 
     const { object: recommendations } = await generateObject({
       model,
@@ -40,16 +32,27 @@ export async function POST(request: NextRequest) {
       prompt,
     });
 
-    // Post-process: ensure Sephora URLs have the correct skuId for shade selection
+    // Post-process: use real Sephora URLs from API data + append skuId for shade
+    const urlMap = new Map<string, string>();
+    for (const category of Object.values(products)) {
+      for (const p of category) {
+        if (p.productId && p.url) {
+          urlMap.set(p.productId, p.url);
+        }
+      }
+    }
+
     for (const cat of recommendations.recommendations) {
       for (const product of cat.products) {
-        if (product.skuId && product.productId) {
-          // Build a clean Sephora URL with the shade's skuId
-          const slug = product.name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/-+$/, "");
-          product.sephoraUrl = `https://www.sephora.com/product/${slug}-${product.productId}?skuId=${product.skuId}`;
+        const realUrl = urlMap.get(product.productId);
+        if (realUrl) {
+          // Use real URL, replace skuId if we have a shade-specific one
+          if (product.skuId) {
+            const base = realUrl.replace(/[?&]skuId=[^&]+/, "");
+            product.sephoraUrl = `${base}${base.includes("?") ? "&" : "?"}skuId=${product.skuId}`;
+          } else {
+            product.sephoraUrl = realUrl;
+          }
         }
       }
     }

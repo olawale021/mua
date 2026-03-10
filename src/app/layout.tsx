@@ -44,9 +44,6 @@ export default function RootLayout({
                 <span className="font-display text-2xl font-bold italic tracking-editorial text-primary transition-colors group-hover:text-accent">
                   MUA
                 </span>
-                <span className="hidden sm:block label-caps text-muted-foreground">
-                  Beauty Advisor
-                </span>
               </a>
               <nav className="flex items-center gap-6">
                 <a

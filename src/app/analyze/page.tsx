@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CameraCapture } from "@/components/camera-capture";
 import { LoadingAnimation } from "@/components/loading-animation";
-import { ProviderToggle, type Provider } from "@/components/provider-toggle";
 import { SkinAnalysis } from "@/types";
 
 type AnalyzeState = "capture" | "analyzing" | "error";
@@ -13,15 +12,13 @@ export default function AnalyzePage() {
   const router = useRouter();
   const [state, setState] = useState<AnalyzeState>("capture");
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<Provider>("openai");
-
   async function handleCapture(imageBase64: string) {
     setState("analyzing");
     setError(null);
 
     try {
       const analysisRes = await fetch(
-        `/api/analyze?provider=${provider}`,
+        `/api/analyze`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -36,7 +33,7 @@ export default function AnalyzePage() {
       const { photoUrl, ...analysis } = await analysisRes.json() as SkinAnalysis & { photoUrl: string };
 
       const recommendRes = await fetch(
-        `/api/recommend?provider=${provider}`,
+        `/api/recommend`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,7 +53,6 @@ export default function AnalyzePage() {
         JSON.stringify(recommendations)
       );
       sessionStorage.setItem("mua-photo", photoUrl);
-      sessionStorage.setItem("mua-provider", provider);
 
       router.push("/results");
     } catch (err) {
@@ -102,11 +98,6 @@ export default function AnalyzePage() {
         {/* Camera */}
         <div className="animate-fade-up delay-100">
           <CameraCapture onCapture={handleCapture} />
-        </div>
-
-        {/* Provider toggle */}
-        <div className="animate-fade-up delay-200 mt-8 flex justify-center">
-          <ProviderToggle value={provider} onChange={setProvider} />
         </div>
 
         {/* Error state */}

@@ -13,13 +13,11 @@ export default function ResultsPage() {
   const [recommendations, setRecommendations] =
     useState<RecommendationResult | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [provider, setProvider] = useState<string | null>(null);
 
   useEffect(() => {
     const storedAnalysis = sessionStorage.getItem("mua-analysis");
     const storedRecs = sessionStorage.getItem("mua-recommendations");
     const storedPhoto = sessionStorage.getItem("mua-photo");
-    const storedProvider = sessionStorage.getItem("mua-provider");
 
     if (!storedAnalysis || !storedRecs) {
       router.push("/analyze");
@@ -29,7 +27,6 @@ export default function ResultsPage() {
     setAnalysis(JSON.parse(storedAnalysis));
     setRecommendations(JSON.parse(storedRecs));
     if (storedPhoto) setPhoto(storedPhoto);
-    if (storedProvider) setProvider(storedProvider);
   }, [router]);
 
   if (!analysis || !recommendations) {
@@ -50,14 +47,7 @@ export default function ResultsPage() {
           <div>
             <div className="mb-2 flex items-center gap-3">
               <div className="h-px w-6 bg-copper/50" />
-              <span className="label-caps text-copper">
-                Your Results
-                {provider && (
-                  <span className="ml-2 text-muted-foreground/60">
-                    via {provider === "openai" ? "GPT-4o" : "Claude"}
-                  </span>
-                )}
-              </span>
+              <span className="label-caps text-copper">Your Results</span>
             </div>
             <h1 className="font-display text-3xl font-bold italic tracking-editorial sm:text-4xl">
               Beauty Profile
